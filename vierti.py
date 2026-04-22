@@ -121,8 +121,8 @@ def run_two_player_game():
             current_player = PLAYER_ONE
 
 def choose_ai_column(board):
-    valid_columns = get_valid_columns(board)
-    return random.choice(valid_columns)
+    col, _ = minimax(board, 3, -99999, 99999, True, PLAYER_TWO)
+    return col
 
 def run_human_vs_ai_game():
     board = create_board()
@@ -154,6 +154,85 @@ def run_human_vs_ai_game():
             current_player = PLAYER_TWO
         else:
             current_player = PLAYER_ONE
+
+def score_window(window, player):
+    opp = PLAYER_ONE if player == PLAYER_TWO else PLAYER_TWO
+    p = window.count(player)
+    e = window.count(CELL_EMPTY)
+    o = window.count(opp)
+    if p == 4:
+        return 100
+    if p == 3 and e == 1:
+        return 5
+    if p == 2 and e == 2:
+        return 2
+    if o == 3 and e == 1:
+        return -4
+    return 0
+
+def score_board(board, player):
+    score = 0
+    center = [board[r][3] for r in range(6)]
+    score += center.count(player) * 3
+    for r in range(6):
+        for c in range(4):
+            w = [board[r][c+i] for i in range(4)]
+            score += score_window(w, player)
+    for r in range(3):
+        for c in range(7):
+            w = [board[r+i][c] for i in range(4)]
+            score += score_window(w, player)
+    for r in range(3):
+        for c in range(4):
+            w = [board[r+i][c+i] for i in range(4)]
+            score += score_window(w, player)
+    for r in range(3, 6):
+        for c in range(4):
+            w = [board[r-i][c+i] for i in range(4)]
+            score += score_window(w, player)
+    return score
+
+def minimax(board, depth, alpha, beta, maximizing, ai_player):
+    opp = PLAYER_ONE if ai_player == PLAYER_TWO else PLAYER_TWO
+    winner = has_winner(board)
+    if winner == ai_player:
+        return (None, 10000 + depth)
+    if winner == opp:
+        return (None, -10000 - depth)
+    if is_full(board) or depth == 0:
+        return (None, score_board(board, ai_player))
+    cols = get_valid_columns(board)
+    best_col = cols[len(cols) // 2]
+    if maximizing:
+        value = -99999
+        for col in cols:
+            apply_move(board, col, ai_player)
+            _, score = minimax(board, depth-1, alpha, beta, False, ai_player)
+            undo_move(board, col)
+            if score > value:
+                value = score
+                best_col = col
+            alpha = max(alpha, value)
+            if alpha >= beta:
+                break
+        return (best_col, value)
+    else:
+        value = 99999
+        for col in cols:
+            apply_move(board, col, opp)
+            _, score = minimax(board, depth-1, alpha, beta, True, ai_player)
+            undo_move(board, col)
+            if score < value:
+                value = score
+                best_col = col
+            beta = min(beta, value)
+            if alpha >= beta:
+                break
+        return (best_col, value)
+
+def get_ai_move(board, ai_player, depth=3):
+    col, _ = minimax(board, depth, -99999, 99999, True, ai_player)
+    return col
 
 if __name__ == "__main__":
     run_human_vs_ai_game()
